@@ -74,6 +74,17 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* zenbu-inspired shell tokens, tuned for #101010 terminal panel */
+  --term-panel: #101010;
+  --term-chrome: #1c1c1c;
+  --term-rail: #161616;
+  --term-rail-foreground: rgba(255, 255, 255, 0.55);
+  --term-rail-foreground-strong: #ffffff;
+  --term-rail-muted: rgba(255, 255, 255, 0.35);
+  --term-rail-hover: rgba(255, 255, 255, 0.04);
+  --term-rail-active: rgba(255, 255, 255, 0.08);
+  --term-panel-border: rgba(255, 255, 255, 0.06);
 }
 
 @theme inline {

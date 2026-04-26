@@ -6,5 +6,3 @@ export const RESIZE_DEBOUNCE_MS = 80;
 export const TERMINAL_FONT_SIZE_PX = 13;
 export const TERMINAL_LINE_HEIGHT = 1.2;
 export const TERMINAL_SCROLLBACK_LINES = 10000;
-export const TAB_MIN_WIDTH_PX = 80;
-export const TAB_MAX_WIDTH_PX = 240;

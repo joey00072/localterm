@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { TabBar } from "@/components/tab-bar";
+import { TabSidebar } from "@/components/tab-sidebar";
 import { TerminalView } from "@/components/terminal-view";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -146,10 +146,11 @@ export const App = () => {
       <Tabs
         value={activeTabValue}
         onValueChange={setActive}
-        className="flex h-dvh flex-col gap-0 bg-[#101010] text-foreground"
+        orientation="vertical"
+        className="flex h-dvh flex-row gap-0 bg-(--term-chrome) pt-1 pb-1 text-foreground"
       >
-        <TabBar onNew={() => void handleNewTab()} />
-        <div className="relative flex-1 overflow-hidden bg-[#101010]">
+        <TabSidebar onNew={() => void handleNewTab()} />
+        <div className="relative min-w-0 flex-1 overflow-hidden rounded-tl-lg border-t border-b-0 border-l border-(--term-panel-border) bg-(--term-panel)">
           {tabIds.map((tabId) => (
             <TabsContent
               key={tabId}
