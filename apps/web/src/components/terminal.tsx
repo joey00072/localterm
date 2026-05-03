@@ -4,12 +4,36 @@ import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal as XtermTerminal } from "@xterm/xterm";
-import { useEffect, useRef } from "react";
+import { Check, Copy, Plus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
 import { buildWebSocketUrl } from "@/lib/api";
 import {
+  COPY_FEEDBACK_MS,
+  DEAD_SESSION_TITLE_PREFIX,
   DEFAULT_DOCUMENT_TITLE,
+  DISCONNECT_MODAL_THRESHOLD_FAILURES,
   RECONNECT_DELAY_MS,
   RESIZE_DEBOUNCE_MS,
+  RESTART_COMMAND,
+  RETRY_BUTTON_FEEDBACK_MS,
   TERMINAL_BACKGROUND_HEX,
   TERMINAL_FONT_SIZE_PX,
   TERMINAL_LINE_HEIGHT,
@@ -19,6 +43,15 @@ import {
 import { serverToClientMessageSchema } from "@/lib/schemas";
 import type { ClientToServerMessage } from "@/lib/types";
 import "@xterm/xterm/css/xterm.css";
+
+const formatExitMarker = (code: number | null): string => {
+  const description = code === null ? "shell exited" : `shell exited with code ${code}`;
+  return `\r\n\x1b[2;31m[${description}]\x1b[0m\r\n`;
+};
+
+const titleForLiveSession = (raw: string): string => raw || DEFAULT_DOCUMENT_TITLE;
+const titleForDeadSession = (raw: string): string =>
+  `${DEAD_SESSION_TITLE_PREFIX}${raw || DEFAULT_DOCUMENT_TITLE}`;
 
 interface TerminalProps {
   sessionId: string;
@@ -49,21 +82,43 @@ const TERMINAL_THEME_VESPER = {
   brightWhite: "#ffffff",
 };
 
-const TERMINAL_FONT_FAMILY =
-  '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+const FALLBACK_MONO_FONT_FAMILY = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+
+const resolveMonoFontFamily = (): string => {
+  if (typeof window === "undefined") return FALLBACK_MONO_FONT_FAMILY;
+  const value = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue("--font-mono")
+    .trim();
+  return value || FALLBACK_MONO_FONT_FAMILY;
+};
 
 const reloadToFreshSession = () => {
   window.location.assign(window.location.pathname);
 };
 
+const openNewShellInNewTab = () => {
+  window.open(window.location.origin, "_blank", "noopener,noreferrer");
+};
+
 export const Terminal = ({ sessionId }: TerminalProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const manualReconnectRef = useRef<(() => void) | null>(null);
+  const retryFeedbackTimerRef = useRef<number | null>(null);
+  const copyFeedbackTimerRef = useRef<number | null>(null);
+  const [exitInfo, setExitInfo] = useState<{ code: number | null } | null>(null);
+  const [consecutiveFailures, setConsecutiveFailures] = useState(0);
+  const [hasCopiedRestartCommand, setHasCopiedRestartCommand] = useState(false);
+  const [isRetryingConnection, setIsRetryingConnection] = useState(false);
+  const [sessionTitle, setSessionTitle] = useState("");
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     let disposed = false;
+    let exited = false;
+    let lastTitle = "";
     let socket: WebSocket | null = null;
     let reconnectTimer: number | null = null;
     let resizeTimer: number | null = null;
@@ -74,7 +129,7 @@ export const Terminal = ({ sessionId }: TerminalProps) => {
       allowProposedApi: true,
       cursorBlink: true,
       cursorStyle: "block",
-      fontFamily: TERMINAL_FONT_FAMILY,
+      fontFamily: resolveMonoFontFamily(),
       fontSize: TERMINAL_FONT_SIZE_PX,
       lineHeight: TERMINAL_LINE_HEIGHT,
       scrollback: TERMINAL_SCROLLBACK_LINES,
@@ -98,6 +153,11 @@ export const Terminal = ({ sessionId }: TerminalProps) => {
     } catch {
       /* webgl unavailable; xterm falls back to canvas */
     }
+
+    terminal.attachCustomKeyEventHandler((event) => {
+      if (event.key === "Tab" && (event.metaKey || event.ctrlKey)) return false;
+      return true;
+    });
 
     const send = (message: ClientToServerMessage) => {
       if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
@@ -132,12 +192,17 @@ export const Terminal = ({ sessionId }: TerminalProps) => {
 
     const connect = () => {
       if (disposed) return;
-      socket = new WebSocket(buildWebSocketUrl(sessionId));
+      const nextSocket = new WebSocket(buildWebSocketUrl(sessionId));
+      socket = nextSocket;
 
-      socket.addEventListener("open", () => sendResize(terminal.cols, terminal.rows));
+      nextSocket.addEventListener("open", () => {
+        if (disposed || socket !== nextSocket) return;
+        setConsecutiveFailures(0);
+        sendResize(terminal.cols, terminal.rows);
+      });
 
-      socket.addEventListener("message", (event) => {
-        if (disposed) return;
+      nextSocket.addEventListener("message", (event) => {
+        if (disposed || socket !== nextSocket) return;
         let raw: unknown;
         try {
           raw = JSON.parse(typeof event.data === "string" ? event.data : String(event.data));
@@ -150,38 +215,65 @@ export const Terminal = ({ sessionId }: TerminalProps) => {
         if (message.type === "snapshot") {
           terminal.reset();
           terminal.write(message.data);
-          document.title = message.title || DEFAULT_DOCUMENT_TITLE;
+          lastTitle = message.title;
+          setSessionTitle(message.title);
+          document.title = exited ? titleForDeadSession(lastTitle) : titleForLiveSession(lastTitle);
         } else if (message.type === "output") {
           terminal.write(message.data);
         } else if (message.type === "title") {
-          document.title = message.title || DEFAULT_DOCUMENT_TITLE;
+          lastTitle = message.title;
+          setSessionTitle(message.title);
+          if (!exited) document.title = titleForLiveSession(lastTitle);
         } else if (message.type === "exit") {
-          reloadToFreshSession();
+          exited = true;
+          terminal.write(formatExitMarker(message.code));
+          document.title = titleForDeadSession(lastTitle);
+          setExitInfo({ code: message.code });
         }
       });
 
-      socket.addEventListener("close", (event) => {
-        socket = null;
+      nextSocket.addEventListener("close", (event) => {
+        if (socket === nextSocket) socket = null;
         if (disposed) return;
+        if (exited) return;
         if (event.code === WS_CLOSE_SESSION_NOT_FOUND) {
           reloadToFreshSession();
           return;
         }
+        if (socket !== null) return;
+        setConsecutiveFailures((previous) => previous + 1);
         reconnectTimer = window.setTimeout(connect, RECONNECT_DELAY_MS);
       });
 
-      socket.addEventListener("error", () => {
+      nextSocket.addEventListener("error", () => {
         try {
-          socket?.close();
+          nextSocket.close();
         } catch {
           /* socket already closing */
         }
       });
     };
+
+    manualReconnectRef.current = () => {
+      if (disposed || exited) return;
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      try {
+        socket?.close();
+      } catch {
+        /* socket already closing */
+      }
+      socket = null;
+      connect();
+    };
+
     connect();
 
     return () => {
       disposed = true;
+      manualReconnectRef.current = null;
       if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
       if (resizeTimer !== null) window.clearTimeout(resizeTimer);
       observer.disconnect();
@@ -196,19 +288,134 @@ export const Terminal = ({ sessionId }: TerminalProps) => {
     };
   }, [sessionId]);
 
+  const triggerManualReconnect = useCallback(() => {
+    setIsRetryingConnection(true);
+    manualReconnectRef.current?.();
+    if (retryFeedbackTimerRef.current !== null) {
+      window.clearTimeout(retryFeedbackTimerRef.current);
+    }
+    retryFeedbackTimerRef.current = window.setTimeout(() => {
+      retryFeedbackTimerRef.current = null;
+      setIsRetryingConnection(false);
+    }, RETRY_BUTTON_FEEDBACK_MS);
+  }, []);
+
+  const copyRestartCommand = useCallback(() => {
+    void navigator.clipboard
+      .writeText(RESTART_COMMAND)
+      .then(() => {
+        setHasCopiedRestartCommand(true);
+        if (copyFeedbackTimerRef.current !== null) {
+          window.clearTimeout(copyFeedbackTimerRef.current);
+        }
+        copyFeedbackTimerRef.current = window.setTimeout(() => {
+          copyFeedbackTimerRef.current = null;
+          setHasCopiedRestartCommand(false);
+        }, COPY_FEEDBACK_MS);
+      })
+      .catch(() => {
+        /* clipboard permission denied; user can still select + copy manually */
+      });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (retryFeedbackTimerRef.current !== null) {
+        window.clearTimeout(retryFeedbackTimerRef.current);
+        retryFeedbackTimerRef.current = null;
+      }
+      if (copyFeedbackTimerRef.current !== null) {
+        window.clearTimeout(copyFeedbackTimerRef.current);
+        copyFeedbackTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const isShellDead = exitInfo !== null;
+  const isDisconnected = !isShellDead && consecutiveFailures >= DISCONNECT_MODAL_THRESHOLD_FAILURES;
+  const isModalOpen = isShellDead || isDisconnected;
+
   return (
-    <div className="relative h-dvh w-dvw" style={{ background: TERMINAL_BACKGROUND_HEX }}>
-      <div ref={containerRef} aria-label="terminal session" className="h-full w-full" />
-      <a
-        href="/"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="open new shell in a new browser tab"
-        title="new shell (opens in a new browser tab)"
-        className="absolute top-1 right-1 grid size-9 select-none place-items-center rounded-md font-mono text-xl leading-none text-white/40 transition-colors hover:bg-white/25 hover:text-white focus-visible:bg-white/25 focus-visible:text-white focus-visible:outline-none active:bg-white/35"
-      >
-        +
-      </a>
+    <div className="flex h-dvh w-dvw flex-col" style={{ background: TERMINAL_BACKGROUND_HEX }}>
+      <header className="flex h-10 flex-none items-center justify-between gap-3 border-b border-border bg-background px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          {isShellDead ? (
+            <Badge variant="destructive" role="status" aria-live="polite">
+              {exitInfo?.code === null ? "exited" : `exited · code ${exitInfo?.code}`}
+            </Badge>
+          ) : null}
+          <span className="truncate font-mono text-sm text-muted-foreground">
+            {sessionTitle || "shell"}
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label="open a new shell in a new browser tab"
+          title="opens in a new browser tab"
+          render={<a href="/" target="_blank" rel="noopener noreferrer" />}
+        >
+          <Plus data-icon="inline-start" />
+          New terminal
+        </Button>
+      </header>
+      <div ref={containerRef} aria-label="terminal session" className="min-h-0 flex-1" />
+
+      <AlertDialog open={isModalOpen}>
+        <AlertDialogContent>
+          {isShellDead ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Shell ended</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {exitInfo?.code === null || exitInfo?.code === 0
+                    ? "Open a new shell to keep going, or close this tab."
+                    : `Exit code ${exitInfo?.code}. Open a new shell to keep going.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogAction onClick={openNewShellInNewTab}>New shell</AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <Spinner aria-hidden="true" role="presentation" aria-label={undefined} />
+                  Lost connection
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  The localterm server isn't responding. Start it again from your terminal, then
+                  retry.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <InputGroup>
+                <InputGroupInput
+                  readOnly
+                  value={RESTART_COMMAND}
+                  aria-label="restart command"
+                  className="font-mono"
+                />
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    size="icon-xs"
+                    onClick={copyRestartCommand}
+                    aria-label={hasCopiedRestartCommand ? "Copied" : "Copy restart command"}
+                  >
+                    {hasCopiedRestartCommand ? <Check /> : <Copy />}
+                  </InputGroupButton>
+                </InputGroupAddon>
+              </InputGroup>
+              <AlertDialogFooter>
+                <AlertDialogAction onClick={triggerManualReconnect} disabled={isRetryingConnection}>
+                  {isRetryingConnection ? <Spinner data-icon="inline-start" /> : null}
+                  Retry
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          )}
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

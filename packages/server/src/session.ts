@@ -4,7 +4,13 @@ import os from "node:os";
 import type * as XtermAddonSerialize from "@xterm/addon-serialize";
 import type * as XtermHeadless from "@xterm/headless";
 import { spawn, type IPty } from "node-pty";
-import { DEFAULT_COLS, DEFAULT_ROWS, DEFAULT_SCROLLBACK, DEFAULT_TITLE } from "./constants.js";
+import {
+  DEFAULT_COLS,
+  DEFAULT_ROWS,
+  DEFAULT_SCROLLBACK,
+  DEFAULT_TITLE,
+  PTY_ENV_DENYLIST,
+} from "./constants.js";
 import { ensureSpawnHelperExecutable } from "./ensure-spawn-helper-executable.js";
 import { generateFriendlyId } from "./friendly-id.js";
 import { getDefaultShell } from "./default-shell.js";
@@ -70,7 +76,9 @@ export class Session extends EventEmitter<SessionEvents> {
     });
 
     const env: Record<string, string> = {};
+    const denied = new Set(PTY_ENV_DENYLIST);
     for (const [key, value] of Object.entries(process.env)) {
+      if (denied.has(key)) continue;
       if (typeof value === "string") env[key] = value;
     }
     if (input.env) {
@@ -92,6 +100,15 @@ export class Session extends EventEmitter<SessionEvents> {
     this.pty.onData((data) => {
       this.headless.write(data);
       this.emit("output", data);
+    });
+
+    this.headless.onData((response) => {
+      if (this.exited) return;
+      try {
+        this.pty.write(response);
+      } catch {
+        /* PTY may have died between checks */
+      }
     });
 
     this.pty.onExit(({ exitCode }) => {

@@ -10,6 +10,8 @@ export const FRIENDLY_ID_SUFFIX_LENGTH = 4;
 
 export const SESSION_IDLE_REAP_MS = 30_000;
 
+export const PTY_ENV_DENYLIST = ["LOCALTERM_DAEMON_CHILD"];
+
 export const MAX_INPUT_BYTES = 64 * 1024;
 export const MAX_BODY_BYTES = 4 * 1024;
 export const MAX_PATH_BYTES = 4096;

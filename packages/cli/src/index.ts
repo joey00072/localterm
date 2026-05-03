@@ -17,15 +17,17 @@ program
 
 program
   .command("start")
-  .description("start the localterm server")
+  .description("start the localterm server (daemonizes by default)")
   .option("-p, --port <port>", "port to bind", process.env.PORT ?? String(DEFAULT_PORT))
   .option("-H, --host <host>", "host to bind", DEFAULT_HOST)
   .option("--no-open", "do not open browser on start")
-  .action(async (options: { port: string; host: string; open: boolean }) => {
+  .option("-F, --foreground", "stay attached to this terminal (do not daemonize)", false)
+  .action(async (options: { port: string; host: string; open: boolean; foreground: boolean }) => {
     await runStart({
       port: Number(options.port),
       host: options.host,
       open: options.open,
+      foreground: options.foreground,
     });
   });
 
