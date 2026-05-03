@@ -10,8 +10,12 @@ interface ManagerEvents {
   reaped: [id: string];
 }
 
-export type SetReapTimer = (handler: () => void, delayMs: number) => unknown;
-export type ClearReapTimer = (handle: unknown) => void;
+export interface SetReapTimer {
+  (handler: () => void, delayMs: number): unknown;
+}
+export interface ClearReapTimer {
+  (handle: unknown): void;
+}
 
 export interface SessionManagerOptions {
   idleReapMs?: number;

@@ -26,7 +26,9 @@ const originHostname = (originHeader: string | undefined): string | null => {
 
 const isLoopback = (hostname: string | null): boolean => {
   if (!hostname) return false;
-  return LOOPBACK_HOSTS.has(hostname);
+  if (LOOPBACK_HOSTS.has(hostname)) return true;
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) return true;
+  return false;
 };
 
 export const isLoopbackHost = (host: string): boolean => isLoopback(host);

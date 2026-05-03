@@ -21,54 +21,78 @@ const makeSession = (id: string): SessionMetadata => ({
   exitCode: null,
 });
 
-const setUrl = (search: string) => {
-  window.history.replaceState({}, "", `/${search}`);
+const setBrowserUrl = (relative: string) => {
+  window.history.replaceState({}, "", relative);
 };
 
-const currentSearchParam = (key: string): string | null =>
-  new URL(window.location.href).searchParams.get(key);
+const getCurrentPath = (): string => window.location.pathname;
+const getCurrentSearch = (): string => window.location.search;
 
 beforeEach(() => {
-  setUrl("");
+  setBrowserUrl("/");
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  setUrl("");
+  setBrowserUrl("/");
 });
 
 describe("App", () => {
-  it("creates a session when the URL has no id, then writes ?id= back", async () => {
-    const create = vi.spyOn(api, "createSession").mockResolvedValue(makeSession("alpha"));
+  it("creates a session at root and rewrites the path to /<id>", async () => {
+    const create = vi
+      .spyOn(api, "createSession")
+      .mockResolvedValue(makeSession("jolly-otter-2k4r"));
 
     render(<App />);
 
-    expect(await screen.findByTestId("terminal")).toHaveTextContent("alpha");
+    expect(await screen.findByTestId("terminal")).toHaveTextContent("jolly-otter-2k4r");
     expect(create).toHaveBeenCalledTimes(1);
-    expect(currentSearchParam("id")).toBe("alpha");
+    expect(getCurrentPath()).toBe("/jolly-otter-2k4r");
   });
 
-  it("uses the URL's ?id= without contacting the server", async () => {
-    setUrl("?id=existing");
+  it("uses a path-segment id without contacting the server", async () => {
+    setBrowserUrl("/sage-lion-cbqt");
     const create = vi.spyOn(api, "createSession");
 
     render(<App />);
 
-    expect(await screen.findByTestId("terminal")).toHaveTextContent("existing");
+    expect(await screen.findByTestId("terminal")).toHaveTextContent("sage-lion-cbqt");
     expect(create).not.toHaveBeenCalled();
-    expect(currentSearchParam("id")).toBe("existing");
+    expect(getCurrentPath()).toBe("/sage-lion-cbqt");
   });
 
-  it("upgrades the legacy ?tab= URL to ?id= without creating a session", async () => {
-    setUrl("?tab=legacy");
+  it("upgrades a legacy ?id= URL into the path form", async () => {
+    setBrowserUrl("/?id=legacy-fox-9mka");
     const create = vi.spyOn(api, "createSession");
 
     render(<App />);
 
-    expect(await screen.findByTestId("terminal")).toHaveTextContent("legacy");
+    expect(await screen.findByTestId("terminal")).toHaveTextContent("legacy-fox-9mka");
     expect(create).not.toHaveBeenCalled();
-    expect(currentSearchParam("id")).toBe("legacy");
-    expect(currentSearchParam("tab")).toBeNull();
+    expect(getCurrentPath()).toBe("/legacy-fox-9mka");
+    expect(getCurrentSearch()).toBe("");
+  });
+
+  it("upgrades the older ?tab= URL into the path form", async () => {
+    setBrowserUrl("/?tab=legacy-fox-9mka");
+    const create = vi.spyOn(api, "createSession");
+
+    render(<App />);
+
+    expect(await screen.findByTestId("terminal")).toHaveTextContent("legacy-fox-9mka");
+    expect(create).not.toHaveBeenCalled();
+    expect(getCurrentPath()).toBe("/legacy-fox-9mka");
+  });
+
+  it("ignores garbage paths and bootstraps a fresh session", async () => {
+    setBrowserUrl("/index.html");
+    const create = vi.spyOn(api, "createSession").mockResolvedValue(makeSession("fresh-bear-7m3a"));
+
+    render(<App />);
+
+    expect(await screen.findByTestId("terminal")).toHaveTextContent("fresh-bear-7m3a");
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(getCurrentPath()).toBe("/fresh-bear-7m3a");
   });
 
   it("renders a static error notice when bootstrap fails", async () => {
@@ -82,7 +106,7 @@ describe("App", () => {
 
   it("registers a beforeunload listener once a session is live", async () => {
     const addSpy = vi.spyOn(window, "addEventListener");
-    vi.spyOn(api, "createSession").mockResolvedValue(makeSession("alpha"));
+    vi.spyOn(api, "createSession").mockResolvedValue(makeSession("alpha-otter-aaaa"));
 
     render(<App />);
 

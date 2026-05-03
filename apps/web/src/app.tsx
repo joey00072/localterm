@@ -3,19 +3,27 @@ import { Terminal } from "@/components/terminal";
 import { TERMINAL_BACKGROUND_HEX } from "@/lib/constants";
 import { createSession } from "@/lib/api";
 
-const URL_PARAM_PRIMARY = "id";
-const URL_PARAM_LEGACY = "tab";
+const SESSION_ID_PATTERN = /^[a-z2-9-]+$/i;
+const URL_PARAM_LEGACY_PRIMARY = "id";
+const URL_PARAM_LEGACY_FALLBACK = "tab";
 
 const readSessionIdFromUrl = (): string | null => {
-  const params = new URL(window.location.href).searchParams;
-  return params.get(URL_PARAM_PRIMARY) ?? params.get(URL_PARAM_LEGACY);
+  const url = new URL(window.location.href);
+  const fromQuery =
+    url.searchParams.get(URL_PARAM_LEGACY_PRIMARY) ??
+    url.searchParams.get(URL_PARAM_LEGACY_FALLBACK);
+  if (fromQuery && SESSION_ID_PATTERN.test(fromQuery)) return fromQuery;
+  const pathSegment = url.pathname.replace(/^\/+/, "").replace(/\/+$/, "");
+  if (!pathSegment) return null;
+  if (!SESSION_ID_PATTERN.test(pathSegment)) return null;
+  return pathSegment;
 };
 
 const writeSessionIdToUrl = (id: string) => {
-  const next = new URL(window.location.href);
-  next.searchParams.set(URL_PARAM_PRIMARY, id);
-  next.searchParams.delete(URL_PARAM_LEGACY);
-  window.history.replaceState({}, "", next);
+  const desiredPath = `/${id}`;
+  const current = window.location;
+  if (current.pathname === desiredPath && !current.search) return;
+  window.history.replaceState({}, "", desiredPath);
 };
 
 export const App = () => {

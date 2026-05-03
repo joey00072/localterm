@@ -1,5 +1,6 @@
 import kleur from "kleur";
 import { createApiClient } from "../api-client.js";
+import { getFriendlyUrl } from "../constants.js";
 import { isAlive, readPid, readPort } from "../state.js";
 
 export const runStatus = async (): Promise<void> => {
@@ -21,7 +22,8 @@ export const runStatus = async (): Promise<void> => {
     console.log(kleur.green("● running"));
     console.log(`  pid:      ${pid}`);
     console.log(`  port:     ${port}`);
-    console.log(`  url:      ${kleur.cyan(`http://127.0.0.1:${port}`)}`);
+    console.log(`  url:      ${kleur.cyan(getFriendlyUrl(port))}`);
+    console.log(`  raw:      ${kleur.dim(`http://127.0.0.1:${port}`)}`);
     console.log(`  sessions: ${health.sessions}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

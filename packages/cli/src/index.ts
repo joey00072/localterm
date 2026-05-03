@@ -7,6 +7,9 @@ import { runRestart } from "./commands/restart.js";
 import { runStart } from "./commands/start.js";
 import { runStatus } from "./commands/status.js";
 import { runStop } from "./commands/stop.js";
+import { detectPrivilegeContext, rebaseEnvToInvoker } from "./privilege.js";
+
+rebaseEnvToInvoker(detectPrivilegeContext());
 
 const program = new Command();
 program.name("localterm").description("local browser-based terminal hub").version("0.0.0");
@@ -14,7 +17,7 @@ program.name("localterm").description("local browser-based terminal hub").versio
 program
   .command("start")
   .description("start the localterm server")
-  .option("-p, --port <port>", "port to bind", String(DEFAULT_PORT))
+  .option("-p, --port <port>", "port to bind", process.env.PORT ?? String(DEFAULT_PORT))
   .option("-H, --host <host>", "host to bind", DEFAULT_HOST)
   .option("--no-open", "do not open browser on start")
   .action(async (options: { port: string; host: string; open: boolean }) => {
@@ -42,7 +45,7 @@ program
 program
   .command("restart")
   .description("restart the localterm server")
-  .option("-p, --port <port>", "port to bind", String(DEFAULT_PORT))
+  .option("-p, --port <port>", "port to bind", process.env.PORT ?? String(DEFAULT_PORT))
   .option("-H, --host <host>", "host to bind", DEFAULT_HOST)
   .option("--no-open", "do not open browser on start")
   .action(async (options: { port: string; host: string; open: boolean }) => {

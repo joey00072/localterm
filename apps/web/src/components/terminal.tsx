@@ -197,11 +197,18 @@ export const Terminal = ({ sessionId }: TerminalProps) => {
   }, [sessionId]);
 
   return (
-    <div
-      ref={containerRef}
-      aria-label="terminal session"
-      className="h-dvh w-dvw"
-      style={{ background: TERMINAL_BACKGROUND_HEX }}
-    />
+    <div className="relative h-dvh w-dvw" style={{ background: TERMINAL_BACKGROUND_HEX }}>
+      <div ref={containerRef} aria-label="terminal session" className="h-full w-full" />
+      <a
+        href="/"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="open new shell in a new browser tab"
+        title="new shell — opens in a new browser tab"
+        className="absolute top-2 right-3 select-none rounded px-2 py-0.5 font-mono text-base leading-none text-white/40 transition-opacity hover:bg-white/10 hover:text-white/90"
+      >
+        +
+      </a>
+    </div>
   );
 };

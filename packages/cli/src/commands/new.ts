@@ -2,6 +2,7 @@ import path from "node:path";
 import kleur from "kleur";
 import open from "open";
 import { createApiClient } from "../api-client.js";
+import { getFriendlyUrl } from "../constants.js";
 import { isAlive, readPid, readPort } from "../state.js";
 
 export interface NewOptions {
@@ -25,7 +26,7 @@ export const runNew = async (options: NewOptions): Promise<void> => {
   console.log(kleur.green(`✔ created session ${kleur.bold(session.id)}`));
   if (options.open) {
     try {
-      await open(`http://127.0.0.1:${port}/?id=${session.id}`);
+      await open(getFriendlyUrl(port, session.id));
     } catch {
       /* headless environments (CI, ssh) have no browser to open; not fatal */
     }

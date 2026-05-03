@@ -1,4 +1,5 @@
-export const DEFAULT_PORT = 3417;
+export const DEFAULT_PORT = 80;
+export const UNPRIVILEGED_FALLBACK_PORT = 3417;
 export const DEFAULT_HOST = "127.0.0.1";
 export const DEFAULT_COLS = 120;
 export const DEFAULT_ROWS = 32;
@@ -6,7 +7,7 @@ export const DEFAULT_SCROLLBACK = 5000;
 export const DEFAULT_SHELL_FALLBACK = "/bin/sh";
 export const DEFAULT_TITLE = "shell";
 
-export const SESSION_ID_LENGTH = 10;
+export const FRIENDLY_ID_SUFFIX_LENGTH = 4;
 
 export const SESSION_IDLE_REAP_MS = 30_000;
 

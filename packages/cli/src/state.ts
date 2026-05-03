@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { logFile, pidFile, portFile, stateDirectory } from "./paths.js";
+import { getLogFile, getPidFile, getPortFile, getStateDirectory } from "./paths.js";
 
 export const ensureStateDirectory = (): void => {
+  const stateDirectory = getStateDirectory();
   if (!existsSync(stateDirectory)) {
     mkdirSync(stateDirectory, { recursive: true });
   }
@@ -9,6 +10,7 @@ export const ensureStateDirectory = (): void => {
 
 export const ensureLogFile = (): string => {
   ensureStateDirectory();
+  const logFile = getLogFile();
   if (!existsSync(logFile)) {
     writeFileSync(logFile, "", "utf8");
   }
@@ -17,12 +19,12 @@ export const ensureLogFile = (): string => {
 
 export const writePid = (pid: number, port: number): void => {
   ensureStateDirectory();
-  writeFileSync(pidFile, String(pid), "utf8");
-  writeFileSync(portFile, String(port), "utf8");
+  writeFileSync(getPidFile(), String(pid), "utf8");
+  writeFileSync(getPortFile(), String(port), "utf8");
 };
 
 export const clearPid = (): void => {
-  for (const file of [pidFile, portFile]) {
+  for (const file of [getPidFile(), getPortFile()]) {
     try {
       if (existsSync(file)) unlinkSync(file);
     } catch {
@@ -32,6 +34,7 @@ export const clearPid = (): void => {
 };
 
 export const readPid = (): number | null => {
+  const pidFile = getPidFile();
   if (!existsSync(pidFile)) return null;
   const raw = readFileSync(pidFile, "utf8").trim();
   const parsed = Number(raw);
@@ -39,6 +42,7 @@ export const readPid = (): number | null => {
 };
 
 export const readPort = (): number | null => {
+  const portFile = getPortFile();
   if (!existsSync(portFile)) return null;
   const raw = readFileSync(portFile, "utf8").trim();
   const parsed = Number(raw);

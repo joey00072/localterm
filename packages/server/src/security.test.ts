@@ -16,10 +16,16 @@ describe("isLoopbackHost", () => {
     expect(isLoopbackHost("::1")).toBe(true);
   });
 
+  it("accepts *.localhost (RFC 6761 — always resolves to loopback)", () => {
+    expect(isLoopbackHost("localterm.localhost")).toBe(true);
+    expect(isLoopbackHost("api.myapp.localhost")).toBe(true);
+  });
+
   it("rejects everything else", () => {
     expect(isLoopbackHost("0.0.0.0")).toBe(false);
     expect(isLoopbackHost("10.0.0.1")).toBe(false);
     expect(isLoopbackHost("evil.example.com")).toBe(false);
+    expect(isLoopbackHost("notlocalhost")).toBe(false);
     expect(isLoopbackHost("")).toBe(false);
   });
 });
@@ -38,6 +44,14 @@ describe("loopbackMiddleware", () => {
   it("rejects forged Host header (DNS rebind)", async () => {
     const response = await probe({ host: "evil.example.com" });
     expect(response.status).toBe(403);
+  });
+
+  it("allows reverse-proxied *.localhost Host header", async () => {
+    const response = await probe({
+      host: "localterm.localhost",
+      origin: "https://localterm.localhost",
+    });
+    expect(response.status).toBe(200);
   });
 
   it("rejects cross-origin requests", async () => {

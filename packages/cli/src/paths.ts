@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 
-export const stateDirectory = path.join(os.homedir(), ".localterm");
-export const pidFile = path.join(stateDirectory, "server.pid");
-export const portFile = path.join(stateDirectory, "server.port");
-export const logFile = path.join(stateDirectory, "server.log");
+export const getStateDirectory = (): string => path.join(os.homedir(), ".localterm");
+export const getPidFile = (): string => path.join(getStateDirectory(), "server.pid");
+export const getPortFile = (): string => path.join(getStateDirectory(), "server.port");
+export const getLogFile = (): string => path.join(getStateDirectory(), "server.log");
