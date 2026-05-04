@@ -4,7 +4,7 @@
   "outputDirectory": "dist",
   "redirects": [
     {
-      "source": "/(.*)",
+      "source": "/((?!demo\\.png).*)",
       "destination": "https://github.com/millionco/localterm",
       "permanent": true
     }
