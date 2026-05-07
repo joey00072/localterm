@@ -18,6 +18,7 @@ import {
 import { cliError, exitCodeForCliError } from "../errors.js";
 import { clearPid, ensureLogFile, isAlive, readPort, writePid } from "../state.js";
 import { buildDaemonStartArgs } from "../utils/build-daemon-args.js";
+import { getTailscaleDnsName } from "../utils/get-tailscale-dns-name.js";
 import { pollForDaemonReady } from "../utils/poll-for-daemon-ready.js";
 import { reportCliError } from "../utils/report-cli-error.js";
 import { runStartPreflight } from "../utils/run-start-preflight.js";
@@ -41,6 +42,7 @@ const resolveStaticRoot = (): string | null => {
 export interface StartOptions {
   port: number;
   host: string;
+  allowTailscale: boolean;
   open: boolean;
   foreground: boolean;
 }
@@ -56,7 +58,9 @@ export const runStart = async (options: StartOptions): Promise<void> => {
 };
 
 const runStartAsDaemon = async (options: StartOptions): Promise<void> => {
-  const preflightError = runStartPreflight(options.host);
+  const preflightError = runStartPreflight(options.host, {
+    allowTailscale: options.allowTailscale,
+  });
   if (preflightError !== null) {
     reportCliError(preflightError);
     process.exit(exitCodeForCliError(preflightError));
@@ -88,16 +92,16 @@ const runStartAsDaemon = async (options: StartOptions): Promise<void> => {
   });
 
   if (result.ok) {
-    printDaemonStartedBanner(result.port);
-    if (options.open) await openInBrowser(getFriendlyUrl(result.port));
+    printDaemonStartedBanner(result.port, options);
+    if (options.open) await openInBrowser(getFriendlyUrlForOptions(result.port, options));
     return;
   }
 
   if (result.error.kind === "daemon-ready-timeout" && isAlive(childPid)) {
     const finalPort = readPort();
     if (finalPort !== null && finalPort !== portBeforeSpawn) {
-      printDaemonStartedBanner(finalPort);
-      if (options.open) await openInBrowser(getFriendlyUrl(finalPort));
+      printDaemonStartedBanner(finalPort, options);
+      if (options.open) await openInBrowser(getFriendlyUrlForOptions(finalPort, options));
       return;
     }
   }
@@ -106,8 +110,16 @@ const runStartAsDaemon = async (options: StartOptions): Promise<void> => {
   process.exit(exitCodeForCliError(result.error));
 };
 
-const printDaemonStartedBanner = (port: number): void => {
-  console.log(`${kleur.green("✔")} running at ${kleur.cyan(getFriendlyUrl(port))}`);
+const getFriendlyUrlForOptions = (port: number, options: StartOptions): string =>
+  getFriendlyUrl(
+    port,
+    options.allowTailscale ? (getTailscaleDnsName() ?? options.host) : undefined,
+  );
+
+const printDaemonStartedBanner = (port: number, options: StartOptions): void => {
+  console.log(
+    `${kleur.green("✔")} running at ${kleur.cyan(getFriendlyUrlForOptions(port, options))}`,
+  );
   console.log(`  stop with ${kleur.bold(STOP_COMMAND)}`);
 };
 
@@ -120,7 +132,9 @@ const openInBrowser = async (url: string): Promise<void> => {
 };
 
 const runStartInForeground = async (options: StartOptions): Promise<void> => {
-  const preflightError = runStartPreflight(options.host);
+  const preflightError = runStartPreflight(options.host, {
+    allowTailscale: options.allowTailscale,
+  });
   if (preflightError !== null) {
     reportCliError(preflightError);
     process.exit(exitCodeForCliError(preflightError));
@@ -143,6 +157,7 @@ const runStartInForeground = async (options: StartOptions): Promise<void> => {
       port: options.port,
       host: options.host,
       staticRoot,
+      allowTailscale: options.allowTailscale,
     });
   } catch (caughtError) {
     const startError = cliError.serverStartFailed(
@@ -152,9 +167,8 @@ const runStartInForeground = async (options: StartOptions): Promise<void> => {
     process.exit(exitCodeForCliError(startError));
   }
 
-  writePid(process.pid, server.port);
-
-  const namedUrl = getFriendlyUrl(server.port);
+  const namedUrl = getFriendlyUrlForOptions(server.port, options);
+  writePid(process.pid, server.port, server.host, namedUrl);
   if (isRunningAsDaemonChild()) {
     console.log(`${kleur.green("✔")} daemon listening on ${namedUrl} (pid ${process.pid})`);
   } else {
@@ -199,6 +213,7 @@ const runStartInForeground = async (options: StartOptions): Promise<void> => {
 export const startDefaults: StartOptions = {
   port: DEFAULT_PORT,
   host: DEFAULT_HOST,
+  allowTailscale: false,
   open: true,
   foreground: false,
 };

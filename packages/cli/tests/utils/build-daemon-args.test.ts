@@ -23,6 +23,17 @@ describe("buildDaemonStartArgs", () => {
     ]);
   });
 
+  it("appends --allow-tailscale when tailnet access is enabled", () => {
+    expect(
+      buildDaemonStartArgs({
+        port: 3417,
+        host: "100.64.0.1",
+        open: true,
+        allowTailscale: true,
+      }),
+    ).toEqual(["start", "--port", "3417", "--host", "100.64.0.1", "--allow-tailscale"]);
+  });
+
   it("renders non-default ports as strings", () => {
     expect(buildDaemonStartArgs({ port: 0, host: "127.0.0.1", open: true })).toContain("0");
   });

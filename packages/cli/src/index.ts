@@ -4,6 +4,7 @@ import { runRestart } from "./commands/restart.js";
 import { runStart } from "./commands/start.js";
 import { runStatus } from "./commands/status.js";
 import { runStop } from "./commands/stop.js";
+import { runUrl } from "./commands/url.js";
 import { parsePortOption } from "./utils/parse-port-option.js";
 import { readPackageVersion } from "./utils/read-package-version.js";
 
@@ -20,16 +21,26 @@ program
   .description("start the localterm server (daemonizes by default)")
   .option("-p, --port <port>", "port to bind", parsePortOption, initialPort)
   .option("-H, --host <host>", "host to bind", DEFAULT_HOST)
+  .option("--allow-tailscale", "allow access from Tailscale IPs and MagicDNS names", false)
   .option("--no-open", "do not open browser on start")
   .option("-F, --foreground", "stay attached to this terminal (do not daemonize)", false)
-  .action(async (options: { port: number; host: string; open: boolean; foreground: boolean }) => {
-    await runStart({
-      port: options.port,
-      host: options.host,
-      open: options.open,
-      foreground: options.foreground,
-    });
-  });
+  .action(
+    async (options: {
+      port: number;
+      host: string;
+      allowTailscale: boolean;
+      open: boolean;
+      foreground: boolean;
+    }) => {
+      await runStart({
+        port: options.port,
+        host: options.host,
+        allowTailscale: options.allowTailscale,
+        open: options.open,
+        foreground: options.foreground,
+      });
+    },
+  );
 
 program
   .command("stop")
@@ -46,18 +57,29 @@ program
   });
 
 program
+  .command("url")
+  .description("print the URL for the running localterm server")
+  .action(async () => {
+    await runUrl();
+  });
+
+program
   .command("restart")
   .description("restart the localterm server")
   .option("-p, --port <port>", "port to bind", parsePortOption, initialPort)
   .option("-H, --host <host>", "host to bind", DEFAULT_HOST)
+  .option("--allow-tailscale", "allow access from Tailscale IPs and MagicDNS names", false)
   .option("--no-open", "do not open browser on start")
-  .action(async (options: { port: number; host: string; open: boolean }) => {
-    await runRestart({
-      port: options.port,
-      host: options.host,
-      open: options.open,
-    });
-  });
+  .action(
+    async (options: { port: number; host: string; allowTailscale: boolean; open: boolean }) => {
+      await runRestart({
+        port: options.port,
+        host: options.host,
+        allowTailscale: options.allowTailscale,
+        open: options.open,
+      });
+    },
+  );
 
 program.parseAsync().catch((error: unknown) => {
   console.error(error instanceof Error ? error.message : error);

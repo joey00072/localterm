@@ -26,4 +26,8 @@ export const EXIT_OK = 0;
 export const EXIT_FAILURE = 1;
 export const EXIT_USAGE_ERROR = 2;
 
-export const getFriendlyUrl = (port: number): string => `http://${FRIENDLY_HOSTNAME}:${port}`;
+const formatUrlHost = (host: string): string =>
+  host.includes(":") && !host.startsWith("[") ? `[${host}]` : host;
+
+export const getFriendlyUrl = (port: number, host = FRIENDLY_HOSTNAME): string =>
+  `http://${formatUrlHost(host)}:${port}`;

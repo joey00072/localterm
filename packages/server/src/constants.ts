@@ -77,6 +77,14 @@ export const LOOPBACK_HOSTS = new Set([
   "0:0:0:0:0:0:0:1",
 ]);
 
+export const IPV4_OCTET_COUNT = 4;
+export const IPV4_OCTET_MAX = 255;
+export const TAILSCALE_IPV4_FIRST_OCTET = 100;
+export const TAILSCALE_IPV4_SECOND_OCTET_MIN = 64;
+export const TAILSCALE_IPV4_SECOND_OCTET_MAX = 127;
+export const TAILSCALE_IPV6_PREFIX = "fd7a:115c:a1e0:";
+export const TAILSCALE_DNS_SUFFIX = ".ts.net";
+
 export const HTTP_STATUS_NOT_FOUND = 404;
 
 export const WS_READY_STATE_OPEN = 1;

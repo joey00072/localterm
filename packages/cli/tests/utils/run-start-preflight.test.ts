@@ -36,6 +36,14 @@ describe("runStartPreflight", () => {
     expect(runStartPreflight("api.myapp.localhost")).toBeNull();
   });
 
+  it("accepts Tailscale hosts only when explicitly allowed", () => {
+    expect(runStartPreflight("100.64.0.1")).toEqual(
+      expect.objectContaining({ kind: "invalid-host", host: "100.64.0.1" }),
+    );
+    expect(runStartPreflight("100.64.0.1", { allowTailscale: true })).toBeNull();
+    expect(runStartPreflight("workstation.tailnet.ts.net", { allowTailscale: true })).toBeNull();
+  });
+
   it("reports already-running when a live daemon's pid + port file are both present", () => {
     vi.spyOn(state, "readPid").mockReturnValue(12345);
     vi.spyOn(state, "isAlive").mockReturnValue(true);

@@ -1,9 +1,16 @@
-import { isLoopbackHost } from "localterm-server";
+import { isAllowedHost } from "localterm-server";
 import { type CliError, cliError } from "../errors.js";
 import { clearPid, isAlive, readPid, readPort } from "../state.js";
 
-export const runStartPreflight = (host: string): CliError | null => {
-  if (!isLoopbackHost(host)) {
+export interface RunStartPreflightOptions {
+  allowTailscale?: boolean;
+}
+
+export const runStartPreflight = (
+  host: string,
+  options: RunStartPreflightOptions = {},
+): CliError | null => {
+  if (!isAllowedHost(host, options)) {
     return cliError.invalidHost(host);
   }
   const existingPid = readPid();

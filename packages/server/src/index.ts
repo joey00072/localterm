@@ -21,7 +21,7 @@ import {
 } from "./constants.js";
 import { ServerErrorException, serverError } from "./errors.js";
 import { clientToServerMessageSchema } from "./schemas.js";
-import { enforceLoopback, isLoopbackHost, loopbackMiddleware } from "./security.js";
+import { createNetworkAccessMiddleware, enforceNetworkAccess, isAllowedHost } from "./security.js";
 import { Session } from "./session.js";
 import { SessionRegistry } from "./session-registry.js";
 import { resolveStaticAsset } from "./static-resolver.js";
@@ -31,6 +31,7 @@ export interface ServerOptions {
   port?: number;
   host?: string;
   staticRoot?: string | null;
+  allowTailscale?: boolean;
 }
 
 export interface RunningServer {
@@ -96,7 +97,8 @@ const safeSend = (ws: BroadcastSocket, payload: ServerToClientMessage) => {
 export const createServer = async (options: ServerOptions = {}): Promise<RunningServer> => {
   const port = options.port ?? DEFAULT_PORT;
   const host = options.host ?? DEFAULT_HOST;
-  if (!isLoopbackHost(host)) {
+  const networkAccess = { allowTailscale: Boolean(options.allowTailscale) };
+  if (!isAllowedHost(host, networkAccess)) {
     throw new ServerErrorException(serverError.nonLoopbackHost(host));
   }
 
@@ -106,9 +108,10 @@ export const createServer = async (options: ServerOptions = {}): Promise<Running
   const registry = new SessionRegistry();
   const app = new Hono();
   const { injectWebSocket, upgradeWebSocket, wss } = createNodeWebSocket({ app });
+  const networkAccessMiddleware = createNetworkAccessMiddleware(networkAccess);
 
   const api = new Hono();
-  api.use("*", loopbackMiddleware);
+  api.use("*", networkAccessMiddleware);
   api.get("/health", (context) => context.json({ ok: true, sessions: registry.size() }));
   api.notFound((context) => context.json({ error: "not_found" }, HTTP_STATUS_NOT_FOUND));
   app.route("/api", api);
@@ -116,7 +119,7 @@ export const createServer = async (options: ServerOptions = {}): Promise<Running
   app.get(
     "/ws",
     upgradeWebSocket((context) => {
-      const blocked = enforceLoopback(context);
+      const blocked = enforceNetworkAccess(context, networkAccess);
       if (blocked) {
         return { onOpen: (_event, ws) => ws.close(WS_CLOSE_POLICY_VIOLATION, "forbidden") };
       }
@@ -285,7 +288,7 @@ export const createServer = async (options: ServerOptions = {}): Promise<Running
   );
 
   if (staticRoot) {
-    app.use("*", loopbackMiddleware);
+    app.use("*", networkAccessMiddleware);
     app.get("*", (context) => {
       const requestPath = context.req.path;
       if (requestPath.startsWith("/api/") || requestPath.startsWith("/ws")) {
@@ -377,7 +380,7 @@ export type { Session } from "./session.js";
 export type { SessionRegistry } from "./session-registry.js";
 export type * from "./types.js";
 export { DEFAULT_HOST, DEFAULT_PORT, WS_CLOSE_BACKPRESSURE } from "./constants.js";
-export { isLoopbackHost } from "./security.js";
+export { isAllowedHost, isLoopbackHost, isTailscaleHost } from "./security.js";
 export { healthSchema } from "./schemas.js";
 export {
   ServerErrorException,

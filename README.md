@@ -39,18 +39,33 @@ No session ids, no URL slugs, no reconnects. If you want a long-lived shell that
 ## CLI
 
 ```bash
-localterm start [-p 3417] [-H 127.0.0.1] [--no-open]   # daemonizes by default
+localterm start [-p 3417] [-H 127.0.0.1] [--allow-tailscale] [--no-open]   # daemonizes by default
 localterm stop
 localterm status
+localterm url
 localterm restart
 ```
 
-State lives in `~/.localterm/` (PID, port, server log at `~/.localterm/server.log`).
+State lives in `~/.localterm/` (PID, host, port, URL, server log at `~/.localterm/server.log`).
+
+## Tailscale
+
+To use localterm from another device in your tailnet, bind it to this machine's Tailscale IP and opt in to tailnet access:
+
+```bash
+npx localterm@latest start --host "$(tailscale ip -4)" --allow-tailscale --no-open
+```
+
+Then open `http://<tailscale-ip>:3417` from your Mac. MagicDNS names under `*.ts.net` are accepted too.
+When MagicDNS is enabled, localterm prints the `*.ts.net` URL at startup. Run `localterm url` later to print it again, or `localterm status` for the full status block.
+
+Anyone who can reach that URL on your tailnet can control a shell on this machine, so only use this on a tailnet you trust.
 
 ## Security
 
 - Binds loopback hosts only: `127.0.0.1`, `localhost`, `*.localhost`, `::1`. Non-loopback values are rejected.
-- `/api/*` and `/ws` enforce loopback `Host` and `Origin` headers to defeat DNS-rebinding attacks.
+- Tailscale access is opt-in with `--allow-tailscale` and only admits Tailscale IPs or MagicDNS names.
+- `/api/*` and `/ws` enforce allowed `Host` and `Origin` headers to defeat DNS-rebinding attacks.
 - One PTY per WebSocket. Closing the tab kills the shell — no orphaned processes.
 
 ## Resources & Contributing Back

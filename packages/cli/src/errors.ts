@@ -199,7 +199,7 @@ export const formatCliError = (error: CliError): string => {
     case "invalid-port":
       return `invalid --port '${error.raw}': ${error.reason}`;
     case "invalid-host":
-      return `refusing to bind '${error.host}'. localterm only accepts loopback hosts (127.0.0.1, localhost, *.localhost, ::1).`;
+      return `refusing to bind '${error.host}'. localterm accepts loopback hosts by default; pass --allow-tailscale with a Tailscale IP or MagicDNS name for tailnet access.`;
     case "already-running":
       return `localterm is already running (pid ${error.pid}, port ${error.port}).`;
     case "stale-port-file":

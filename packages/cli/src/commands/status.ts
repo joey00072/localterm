@@ -2,7 +2,7 @@ import kleur from "kleur";
 import { healthSchema } from "localterm-server";
 import { getFriendlyUrl } from "../constants.js";
 import { cliError } from "../errors.js";
-import { isAlive, readPid, readPort } from "../state.js";
+import { isAlive, readHost, readPid, readPort, readUrl } from "../state.js";
 import { reportCliError } from "../utils/report-cli-error.js";
 
 export const runStatus = async (): Promise<void> => {
@@ -19,14 +19,17 @@ export const runStatus = async (): Promise<void> => {
   }
 
   try {
-    const response = await fetch(`http://127.0.0.1:${port}/api/health`);
+    const host = readHost() ?? "127.0.0.1";
+    const displayUrl = readUrl() ?? getFriendlyUrl(port);
+    const rawUrl = getFriendlyUrl(port, host);
+    const response = await fetch(`${rawUrl}/api/health`);
     if (!response.ok) throw new Error(`health check failed: ${response.status}`);
     const health = healthSchema.parse(await response.json());
     console.log(kleur.green("● running"));
     console.log(`  pid:      ${pid}`);
     console.log(`  port:     ${port}`);
-    console.log(`  url:      ${kleur.cyan(getFriendlyUrl(port))}`);
-    console.log(`  raw:      ${kleur.dim(`http://127.0.0.1:${port}`)}`);
+    console.log(`  url:      ${kleur.cyan(displayUrl)}`);
+    console.log(`  raw:      ${kleur.dim(rawUrl)}`);
     console.log(`  sessions: ${health.sessions}`);
   } catch (error) {
     reportCliError(

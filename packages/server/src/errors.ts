@@ -120,7 +120,7 @@ const exhaustivenessGuard = (impossible: never): never => {
 export const formatServerError = (error: ServerError): string => {
   switch (error.kind) {
     case "non-loopback-host":
-      return `refusing to bind non-loopback host '${error.host}': pass 127.0.0.1 or localhost`;
+      return `refusing to bind host '${error.host}': pass a loopback host, or enable Tailscale access for a Tailscale host`;
     case "listen-failed":
       return `failed to listen on ${error.host}:${error.port}: ${error.cause.message}`;
     case "loopback-denied": {
