@@ -56,10 +56,20 @@ To use localterm from another device in your tailnet, bind it to this machine's 
 npx localterm@latest start --host "$(tailscale ip -4)" --allow-tailscale --no-open
 ```
 
-Then open `http://<tailscale-ip>:3417` from your Mac. MagicDNS names under `*.ts.net` are accepted too.
-When MagicDNS is enabled, localterm prints the `*.ts.net` URL at startup. Run `localterm url` later to print it again, or `localterm status` for the full status block.
+Then open the printed `http://<machine>.<tailnet>.ts.net:3417` URL from your Mac. Raw Tailscale IPs still work, but the CLI prefers the MagicDNS URL when it can read one from `tailscale status --json`.
+When MagicDNS is enabled, `localterm start` and `localterm restart` print the `http://<machine>.<tailnet>.ts.net:3417` URL instead of the Tailscale IP. Run `localterm url` later to print it again, or `localterm status` for the full status block.
 
 Anyone who can reach that URL on your tailnet can control a shell on this machine, so only use this on a tailnet you trust.
+
+## Fork Fixes
+
+This fork adds:
+
+- Opt-in Tailscale access with `--allow-tailscale`, including MagicDNS `*.ts.net` Host and Origin validation.
+- Startup, restart, status, and `localterm url` output that prefers the Tailscale MagicDNS URL over the raw Tailscale IP when available.
+- Persisted daemon host and URL state in `~/.localterm/` so follow-up CLI commands print the same reachable URL.
+- Clear connection-loss reporting and bounded WebSocket shutdown behavior from the fork's server/terminal fixes.
+- Terminal usability fixes from the fork, including local font selection, scrollbar handling, Shift+Enter in TUIs, and duplicated-tab favicon state.
 
 ## Security
 

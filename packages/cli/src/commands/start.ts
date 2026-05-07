@@ -12,13 +12,12 @@ import {
   EXIT_FAILURE,
   EXIT_OK,
   FORCE_EXIT_TIMEOUT_MS,
-  getFriendlyUrl,
   STOP_COMMAND,
 } from "../constants.js";
 import { cliError, exitCodeForCliError } from "../errors.js";
 import { clearPid, ensureLogFile, isAlive, readPort, writePid } from "../state.js";
 import { buildDaemonStartArgs } from "../utils/build-daemon-args.js";
-import { getTailscaleDnsName } from "../utils/get-tailscale-dns-name.js";
+import { getLocaltermDisplayUrl } from "../utils/get-localterm-display-url.js";
 import { pollForDaemonReady } from "../utils/poll-for-daemon-ready.js";
 import { reportCliError } from "../utils/report-cli-error.js";
 import { runStartPreflight } from "../utils/run-start-preflight.js";
@@ -111,10 +110,11 @@ const runStartAsDaemon = async (options: StartOptions): Promise<void> => {
 };
 
 const getFriendlyUrlForOptions = (port: number, options: StartOptions): string =>
-  getFriendlyUrl(
+  getLocaltermDisplayUrl({
     port,
-    options.allowTailscale ? (getTailscaleDnsName() ?? options.host) : undefined,
-  );
+    host: options.host,
+    allowTailscale: options.allowTailscale,
+  });
 
 const printDaemonStartedBanner = (port: number, options: StartOptions): void => {
   console.log(

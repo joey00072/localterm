@@ -1,15 +1,11 @@
 import { openSync } from "node:fs";
 import { isAllowedHost } from "localterm-server";
 import kleur from "kleur";
-import {
-  DAEMON_PROBE_INTERVAL_MS,
-  DAEMON_PROBE_MAX_WAIT_MS,
-  getFriendlyUrl,
-} from "../constants.js";
+import { DAEMON_PROBE_INTERVAL_MS, DAEMON_PROBE_MAX_WAIT_MS } from "../constants.js";
 import { cliError, exitCodeForCliError } from "../errors.js";
 import { ensureLogFile, isAlive, readPort } from "../state.js";
 import { buildDaemonStartArgs } from "../utils/build-daemon-args.js";
-import { getTailscaleDnsName } from "../utils/get-tailscale-dns-name.js";
+import { getLocaltermDisplayUrl } from "../utils/get-localterm-display-url.js";
 import { pollForDaemonReady } from "../utils/poll-for-daemon-ready.js";
 import { reportCliError } from "../utils/report-cli-error.js";
 import { sleep } from "../utils/sleep.js";
@@ -56,13 +52,18 @@ export const runRestart = async (options: RestartOptions): Promise<void> => {
   });
 
   if (result.ok) {
-    const displayHost = options.allowTailscale
-      ? (getTailscaleDnsName() ?? options.host)
-      : undefined;
     console.log(
       kleur.green(`✔ restarted (pid ${childPid}, port ${result.port}, logs: ${logPath})`),
     );
-    console.log(`  url: ${kleur.cyan(getFriendlyUrl(result.port, displayHost))}`);
+    console.log(
+      `  url: ${kleur.cyan(
+        getLocaltermDisplayUrl({
+          port: result.port,
+          host: options.host,
+          allowTailscale: options.allowTailscale,
+        }),
+      )}`,
+    );
     return;
   }
 
