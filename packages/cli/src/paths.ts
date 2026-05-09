@@ -7,3 +7,5 @@ export const getPortFile = (): string => path.join(getStateDirectory(), "server.
 export const getHostFile = (): string => path.join(getStateDirectory(), "server.host");
 export const getUrlFile = (): string => path.join(getStateDirectory(), "server.url");
 export const getLogFile = (): string => path.join(getStateDirectory(), "server.log");
+export const getSystemdUserDirectory = (): string =>
+  path.join(os.homedir(), ".config", "systemd", "user");

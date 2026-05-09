@@ -61,6 +61,33 @@ When MagicDNS is enabled, `localterm start` and `localterm restart` print the `h
 
 Anyone who can reach that URL on your tailnet can control a shell on this machine, so only use this on a tailnet you trust.
 
+## Run on Boot
+
+From a cloned checkout on Linux:
+
+```bash
+ni
+nr setup:tailscale
+```
+
+That builds the repo, installs a user `systemd` service, binds localterm to this machine's Tailscale IPv4, starts it, and prints the MagicDNS URL.
+
+Manual equivalent:
+
+```bash
+nr build
+nr cli service install --tailscale
+```
+
+Useful service commands:
+
+```bash
+systemctl --user status localterm.service
+journalctl --user -u localterm.service -f
+systemctl --user restart localterm.service
+systemctl --user disable --now localterm.service
+```
+
 ## Fork Fixes
 
 This fork adds:

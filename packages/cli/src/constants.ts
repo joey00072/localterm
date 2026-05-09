@@ -4,11 +4,15 @@ export const STOP_MAX_WAIT_MS = 5000;
 export const DAEMON_PROBE_INTERVAL_MS = 100;
 export const DAEMON_PROBE_MAX_WAIT_MS = 5000;
 export const VERIFY_PID_TIMEOUT_MS = 1000;
+export const SERVICE_POLL_INTERVAL_MS = 100;
+export const SERVICE_POLL_MAX_WAIT_MS = 5000;
+export const SYSTEMD_RESTART_DELAY_SEC = 2;
 
 export const MIN_TCP_PORT = 0;
 export const MAX_TCP_PORT = 65535;
 
 export const FRIENDLY_HOSTNAME = "localterm.localhost";
+export const SYSTEMD_SERVICE_NAME = "localterm.service";
 export const STOP_COMMAND = "npx localterm@latest stop";
 export const DAEMON_CHILD_ENV_FLAG = "LOCALTERM_DAEMON_CHILD";
 /**

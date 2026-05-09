@@ -10,10 +10,18 @@ export interface TerminalFont {
   source: TerminalFontSource;
 }
 
+export const BUNDLED_NERD_FONT_FAMILY = "JetBrainsMono Nerd Font";
+
 const MONO_FALLBACK = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 
-const buildFamily = (primary: string): string =>
-  `"${escapeCssFontFamily(primary)}", ${MONO_FALLBACK}`;
+const buildFamily = (primary: string): string => {
+  const fontFamilies = [primary];
+  if (primary !== BUNDLED_NERD_FONT_FAMILY) fontFamilies.push(BUNDLED_NERD_FONT_FAMILY);
+  const escapedFontFamilies = fontFamilies.map(
+    (fontFamily) => `"${escapeCssFontFamily(fontFamily)}"`,
+  );
+  return [...escapedFontFamilies, MONO_FALLBACK].join(", ");
+};
 
 export const buildLocalTerminalFont = (family: string): TerminalFont => ({
   id: LOCAL_FONT_ID,
@@ -21,6 +29,15 @@ export const buildLocalTerminalFont = (family: string): TerminalFont => ({
   family: buildFamily(family),
   source: "local",
 });
+
+const JETBRAINS_MONO_NERD_FONT: TerminalFont = {
+  id: "jetbrains-mono-nerd-font",
+  name: BUNDLED_NERD_FONT_FAMILY,
+  family: buildFamily(BUNDLED_NERD_FONT_FAMILY),
+  source: "fontsource",
+};
+
+const DEFAULT_TERMINAL_FONT: TerminalFont = JETBRAINS_MONO_NERD_FONT;
 
 const GEIST_MONO: TerminalFont = {
   id: "geist-mono",
@@ -100,6 +117,7 @@ const ANONYMOUS_PRO: TerminalFont = {
 };
 
 export const TERMINAL_FONTS: TerminalFont[] = [
+  JETBRAINS_MONO_NERD_FONT,
   GEIST_MONO,
   ANONYMOUS_PRO,
   DM_MONO,
@@ -113,15 +131,15 @@ export const TERMINAL_FONTS: TerminalFont[] = [
   UBUNTU_MONO,
 ];
 
-export const DEFAULT_TERMINAL_FONT_ID: string = GEIST_MONO.id;
+export const DEFAULT_TERMINAL_FONT_ID: string = DEFAULT_TERMINAL_FONT.id;
 
 export const findTerminalFontById = (
   id: string | null | undefined,
   localFontFamily?: string | null,
 ): TerminalFont => {
   if (id === LOCAL_FONT_ID && localFontFamily) return buildLocalTerminalFont(localFontFamily);
-  if (!id) return GEIST_MONO;
-  return TERMINAL_FONTS.find((font) => font.id === id) ?? GEIST_MONO;
+  if (!id) return DEFAULT_TERMINAL_FONT;
+  return TERMINAL_FONTS.find((font) => font.id === id) ?? DEFAULT_TERMINAL_FONT;
 };
 
 export const buildGoogleFontsStylesheetHref = (): string => {

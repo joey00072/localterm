@@ -40,6 +40,8 @@ interface FakeXtermHandle {
   setBufferState: (state: { baseY: number; viewportY: number }) => void;
   scrollLines: ReturnType<typeof vi.fn>;
   scrollToBottom: ReturnType<typeof vi.fn>;
+  clearTextureAtlas: ReturnType<typeof vi.fn>;
+  refresh: ReturnType<typeof vi.fn>;
   invokeCsiHandler: (prefix: string | undefined, final: string, params: number[]) => boolean;
 }
 
@@ -117,6 +119,8 @@ vi.mock("@xterm/xterm", () => {
     buffer = { active: { baseY: 0, viewportY: 0 } };
     scrollLines = vi.fn();
     scrollToBottom = vi.fn();
+    clearTextureAtlas = vi.fn();
+    refresh = vi.fn();
     private titleListeners = new Set<(title: string) => void>();
     private csiHandlers: FakeCsiHandlerEntry[] = [];
     private handle: FakeXtermHandle;
@@ -151,6 +155,8 @@ vi.mock("@xterm/xterm", () => {
         },
         scrollLines: this.scrollLines,
         scrollToBottom: this.scrollToBottom,
+        clearTextureAtlas: this.clearTextureAtlas,
+        refresh: this.refresh,
         invokeCsiHandler: (prefix, final, params) => {
           for (let entryIndex = this.csiHandlers.length - 1; entryIndex >= 0; entryIndex -= 1) {
             const entry = this.csiHandlers[entryIndex];
@@ -770,11 +776,11 @@ describe("Terminal theme picker", () => {
 });
 
 describe("Terminal font picker", () => {
-  it("seeds xterm with Geist Mono when no preference is stored", () => {
+  it("seeds xterm with JetBrainsMono Nerd Font when no preference is stored", () => {
     installFakeLocalStorage();
     render(<Terminal />);
     const fontFamily = fakeXterms[0]?.getOptions().fontFamily;
-    expect(fontFamily).toContain("Geist Mono");
+    expect(fontFamily).toContain("JetBrainsMono Nerd Font");
   });
 
   it("seeds xterm with the stored font on mount", () => {
@@ -788,7 +794,7 @@ describe("Terminal font picker", () => {
     installFakeLocalStorage({ "localterm:terminal-font-id": "made-up-font" });
     render(<Terminal />);
     const fontFamily = fakeXterms[0]?.getOptions().fontFamily;
-    expect(fontFamily).toContain("Geist Mono");
+    expect(fontFamily).toContain("JetBrainsMono Nerd Font");
   });
 });
 

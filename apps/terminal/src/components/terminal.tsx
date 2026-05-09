@@ -98,6 +98,11 @@ const titleForLiveSession = (raw: string): string => raw || DEFAULT_DOCUMENT_TIT
 const titleForDeadSession = (raw: string): string =>
   `${DEAD_SESSION_TITLE_PREFIX}${raw || DEFAULT_DOCUMENT_TITLE}`;
 
+const refreshTerminalGlyphs = (terminal: XtermTerminal): void => {
+  terminal.clearTextureAtlas();
+  terminal.refresh(0, Math.max(0, terminal.rows - 1));
+};
+
 const SEARCH_DECORATION_OPTIONS = {
   matchBackground: SEARCH_MATCH_BACKGROUND_HEX,
   activeMatchBackground: SEARCH_ACTIVE_MATCH_BACKGROUND_HEX,
@@ -265,7 +270,6 @@ export const Terminal = ({ onModalOpenChange }: TerminalProps = {}) => {
       initialFontIdRef.current,
       initialLocalFontFamilyRef.current,
     );
-    void awaitFontReady(initialFont);
 
     const terminal = new XtermTerminal({
       allowProposedApi: true,
@@ -304,6 +308,13 @@ export const Terminal = ({ onModalOpenChange }: TerminalProps = {}) => {
     } catch {
       /* webgl unavailable; xterm falls back to canvas */
     }
+
+    void awaitFontReady(initialFont).then(() => {
+      if (disposed) return;
+      refreshTerminalGlyphs(terminal);
+      const liveFitAddon = fitAddonRef.current;
+      if (liveFitAddon) fitTerminalPreservingScroll(terminal, liveFitAddon);
+    });
 
     const kittyPushDisposable = terminal.parser.registerCsiHandler(
       { prefix: ">", final: "u" },
@@ -605,6 +616,7 @@ export const Terminal = ({ onModalOpenChange }: TerminalProps = {}) => {
       const liveTerminal = terminalRef.current;
       if (!liveTerminal) return;
       liveTerminal.options.fontFamily = effectiveFont.family;
+      refreshTerminalGlyphs(liveTerminal);
       const liveFitAddon = fitAddonRef.current;
       if (liveFitAddon) fitTerminalPreservingScroll(liveTerminal, liveFitAddon);
     });

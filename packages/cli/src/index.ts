@@ -1,6 +1,7 @@
 import { DEFAULT_HOST, DEFAULT_PORT } from "localterm-server";
 import { Command } from "commander";
 import { runRestart } from "./commands/restart.js";
+import { runServiceInstall } from "./commands/service.js";
 import { runStart } from "./commands/start.js";
 import { runStatus } from "./commands/status.js";
 import { runStop } from "./commands/stop.js";
@@ -77,6 +78,37 @@ program
         host: options.host,
         allowTailscale: options.allowTailscale,
         open: options.open,
+      });
+    },
+  );
+
+const service = program.command("service").description("manage the localterm user service");
+
+service
+  .command("install")
+  .description("install and start localterm as a user systemd service")
+  .option("-p, --port <port>", "port to bind", parsePortOption, initialPort)
+  .option("-H, --host <host>", "host to bind", DEFAULT_HOST)
+  .option("--allow-tailscale", "allow access from Tailscale IPs and MagicDNS names", false)
+  .option("--tailscale", "bind to this machine's Tailscale IPv4 and allow tailnet access", false)
+  .option("--no-linger", "do not enable user lingering for boot-before-login startup")
+  .option("--no-start", "install and enable the service without starting it now")
+  .action(
+    async (options: {
+      port: number;
+      host: string;
+      allowTailscale: boolean;
+      tailscale: boolean;
+      linger: boolean;
+      start: boolean;
+    }) => {
+      await runServiceInstall({
+        port: options.port,
+        host: options.host,
+        allowTailscale: options.allowTailscale,
+        tailscale: options.tailscale,
+        linger: options.linger,
+        start: options.start,
       });
     },
   );
